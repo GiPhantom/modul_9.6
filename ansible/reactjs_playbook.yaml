@@ -1,0 +1,88 @@
+---
+- hosts: reactjs_servers
+  vars:
+    project_path: /var/www
+    repository: https://gitlab.com/GiPhantom/deploy_iac.git    
+    packages:
+      - yarn
+      - npm
+      - nodejs
+
+  tasks:
+  - name: "YARN | GPG"
+    apt_key: 
+      url: https://dl.yarnpkg.com/debian/pubkey.gpg
+      state: present
+
+  - name: "YARN | Ensure Debian sources list file exist"
+    file:
+      path: /etc/apt/sources.list.d/yarn.list
+      owner: root
+      mode: 0644
+      state: touch
+
+  - name: "YARN | Ensure Debian package is in sources list"
+    lineinfile:
+      dest: /etc/apt/sources.list.d/yarn.list
+      regexp: deb http://dl.yarnpkg.com/debian/ stable main
+      line: deb http://dl.yarnpkg.com/debian/ stable main
+      state: present
+
+  - name: "YARN | Update APT cache"
+    apt:
+      update_cache: yes
+
+  - name: "Ensure the packages are installed RAN, NPM, NodeJS"
+    apt:
+      pkg: "{{ item }}" 
+    loop: "{{ packages }}"
+    tags: install_packages
+  
+  - name: "Set Release Path"
+    set_fact:
+      release_path: "{{ project_path }}/releases/{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
+
+  - name: "Create project path"
+    file:
+      dest: "{{ project_path }}"
+      mode: 0755
+      recurse: yes
+      state: directory
+
+  - name: "Create Release folder"
+    file:
+      dest: "{{ release_path }}"
+      mode: 0755
+      recurse: yes
+      state: directory     
+
+  - name: "Clone the repository"
+    git:
+       repo: "{{ repository }}"
+       dest: "{{ release_path }}"
+
+  - name: "Add IP Address of instance to main page"
+    replace:
+       path: "{{ release_path }}/src/App.js"
+       regexp: 'Test of revert'
+       replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+       backup: yes
+  - name: "all addresses is stored"
+    debug: var=ansible_all_ipv4_addresses
+    debug: var=ansible_default_ipv4.address
+
+  - name: "Ensure PM2 is installed"
+    npm:
+       name: pm2
+       global: yes
+
+  - name: "install packages defined in pakege.json"
+    yarn:
+       path: "{{ release_path }}"
+
+  - name: "Start ReactJS Application"
+    command: "pm2 --name ReactJS start npm -- start"
+    args:
+      chdir: "{{ release_path }}"
+    environment:
+      PORT: 80   

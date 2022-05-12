@@ -1,0 +1,28 @@
+---
+- hosts: nginx_servers
+  #gather_facts: yes
+  vars:
+    reactjs_host_ip: 18.211.248.69
+    reactjs_host_port: 80
+
+  pre_tasks:
+  - name: "Remove default nginx file"
+    file:
+      path: /etc/nginx/sites-enabled/default
+      state: absent
+  
+  tasks:
+  - name: "create nginx.conf from template"
+    template:
+      src: ./templates/nginx.conf.j2
+      dest: /etc/nginx/sites-enabled/nginx.conf
+      force: true
+      owner: root
+      mode: 0644
+    notify: reload nginx
+    
+  handlers:
+  - name: "reload nginx"
+    service:
+      name=nginx
+      state=reloaded
