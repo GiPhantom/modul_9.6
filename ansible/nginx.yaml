@@ -2,7 +2,7 @@
 - hosts: nginx_servers
   #gather_facts: yes
   vars:
-    reactjs_host_ip: 18.211.248.69
+    reactjs_host_ip: 3.217.101.233
     reactjs_host_port: 80
 
   pre_tasks:
